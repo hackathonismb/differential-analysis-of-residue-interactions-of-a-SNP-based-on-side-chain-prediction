@@ -1,4 +1,4 @@
-# Local Force Field Adjustment of Protein Mutations in iCn3d
+# Local Force Field Adjustment of Structure Mutations in iCn3d
 
 ### Introduction
 
@@ -14,4 +14,4 @@ This done using RESTful API calls to OpenMM, a molecular simulation program (htt
 1. Implement a RESTful API of OpenMM for iCn3D to work with. 
 2. Design a protocol for backbone minimization and implicit solvent MD simulation.
 3. Implement and validate the protocol and API calls for OpenMM.
-4. Integrate this into iCn3D. 
+4. Integrate into iCn3D. 
