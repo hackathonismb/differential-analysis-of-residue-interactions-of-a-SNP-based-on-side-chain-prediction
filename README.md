@@ -7,11 +7,9 @@ The program iCn3D is a web application to vizualize and analyze structural data.
 1. Backbone minimization.
 2. Implicit solvent molecular dynamics (MD) simulation.
 
-This done using RESTful API calls to OpenMM, a molecular simulation program (https://openmm.org/). 
-
 ### Current Tasks
 
-1. Implement a RESTful API of OpenMM for iCn3D to work with. 
+1. Choose a molecular simulation program to implement a RESTful API for iCn3D to interace with.
 2. Design a protocol for backbone minimization and implicit solvent MD simulation.
-3. Implement and validate the protocol and API calls for OpenMM.
+3. Implement and validate the protocol and API calls.
 4. Integrate into iCn3D. 
