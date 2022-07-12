@@ -2,10 +2,7 @@
 
 ### Introduction
 
-The program iCn3D is a web application to vizualize and analyze structural data. One feature is to introduct mutations to the protein to compare the original structure and mutant variant. Currently, the structure is processed using scap, a program to predict side-chain conformations, and render the results. This project seeks to add the following features to the iCn3D mutation analysis:
-
-1. Backbone minimization.
-2. Implicit solvent molecular dynamics (MD) simulation.
+The program iCn3D is a web application to vizualize and analyze structural data. One feature is to introduct mutations to the protein to compare the original structure and mutant variant. Currently, the structure is processed using scap, a program to predict side-chain conformations, and render the results. This project seeks to further estimate the new structural conformation using MD simulation. 
 
 ### Current Tasks
 
