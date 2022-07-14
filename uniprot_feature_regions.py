@@ -43,23 +43,31 @@ def retrieve_feature_regions(data):
             end = feature['location']['end']['value']
             if start != end:
                 if feature['type'] == 'Disulfide bond':
-                    features_dict[feature['type']].append((start, end))
+                    coord = (start, end)
                 else:
-                    features_dict[feature['type']].append([start, end])
+                    coord = [start, end]
+                
+                if coord not in features_dict[feature['type']]:
+                    features_dict[feature['type']].append(coord)
             else:
                 # those annotations with a single residue are set to have
                 # the same "start" and "end"
-                features_dict[feature['type']].append(start)
+                if start not in features_dict[feature['type']]:
+                    features_dict[feature['type']].append(start)
     return features_dict
 
 
 def main():
     args = argument_parser()
+    with open('Combined_PTMs.json', "r") as f:
+        combined_PTMs = json.load(f) 
     if args.db == 'uniprot':
         data = query_UniProt(args.id)
         if 'messages' in data:
             raise ValueError(f"invalid uniprotKB: {args.id}")
         features_dict = retrieve_feature_regions(data)
+        if args.id in combined_PTMs:
+            features_dict = {**features_dict, **combined_PTMs[args.id]}
     elif args.db == 'pdb':
         job_id = submit_id_mapping(from_db="PDB", to_db="UniProtKB", ids=[args.id])
         if check_id_mapping_results_ready(job_id):
@@ -67,9 +75,11 @@ def main():
             results = get_id_mapping_results_search(link)
         features_dict = {}
         for hit in results['results']:
-            if hit['from'] not in features_dict:
-                features_dict[hit['from']] = {}
-            features_dict[hit['from']][hit['to']['primaryAccession']] =  retrieve_feature_regions(hit['to'])
+            id_ = hit['to']['primaryAccession']
+            feature_hits_dict = retrieve_feature_regions(hit['to'])
+            if id_ in combined_PTMs:
+                feature_hits_dict = {**feature_hits_dict, **combined_PTMs[id_]}
+            features_dict[hit['to']['primaryAccession']] =  feature_hits_dict 
     else:
         raise ValueError(f"invalid db {args.db}. Choose between uniprot and pdb")
     if args.output != None and '.json' in args.output:
