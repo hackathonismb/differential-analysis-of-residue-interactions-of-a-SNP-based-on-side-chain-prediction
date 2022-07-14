@@ -33,7 +33,10 @@ def retrieve_feature_regions(data):
                                'Region',
                                'Disulfide bond',
                                'Glycosylation',
-                               'Lipidation']:
+                               'Lipidation',
+                               'Metal binding',
+                               'Active site',
+                               'Cross-link']:
             if feature['type'] not in features_dict:
                 features_dict[feature['type']] = []
             start = feature['location']['start']['value']
