@@ -1,3 +1,6 @@
+import csv
+import json
+
 if __name__ == "__main__":
     with open('Combined_PTMs.csv', newline='') as csvfile:
         data = csv.reader(csvfile, delimiter=' ', quotechar='|')
