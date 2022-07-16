@@ -82,9 +82,12 @@ def main():
                 raise ValueError(f"invalid uniprotKB: {args.id}")
             features_dict = retrieve_feature_regions(data)
             if args.id in combined_ptms:
-                features_dict = {**features_dict, **combined_ptms[args.id]}
+                features_dict = {**features_dict,
+                                 **combined_ptms[args.id]}
         elif args.db == 'pdb':
-            job_id = submit_id_mapping(from_db="PDB", to_db="UniProtKB", ids=[args.id])
+            job_id = submit_id_mapping(from_db="PDB",
+                                       to_db="UniProtKB",
+                                       ids=[args.id])
             if check_id_mapping_results_ready(job_id):
                 link = get_id_mapping_results_link(job_id)
                 results = get_id_mapping_results_search(link)
@@ -93,7 +96,8 @@ def main():
                     id_ = hit['to']['primaryAccession']
                     feature_hits_dict = retrieve_feature_regions(hit['to'])
                     if id_ in combined_ptms:
-                        feature_hits_dict = {**feature_hits_dict, **combined_ptms[id_]}
+                        feature_hits_dict = {**feature_hits_dict,
+                                             **combined_ptms[id_]}
                     features_dict[hit['to']['primaryAccession']] = feature_hits_dict
         if args.output is not None and '.json' in args.output:
             filename = args.output
@@ -102,7 +106,8 @@ def main():
         with open(filename, "w") as f:
             f.write(json.dumps(features_dict))
     else:
-        raise ValueError(f"invalid db {args.db}. Choose between uniprot and pdb")
+        raise ValueError(f"invalid db {args.db}."
+                         f" Choose between uniprot and pdb")
 
 
 if __name__ == "__main__":
