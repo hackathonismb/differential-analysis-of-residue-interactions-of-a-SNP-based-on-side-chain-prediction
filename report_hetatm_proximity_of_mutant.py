@@ -31,22 +31,29 @@ def argument_parser():
 
 def main():
     """Print to stdout distance to mutation and atom information of hetatms."""
+    # Parse arguments
     args = argument_parser()
+    # Read input PDB file as a list of lines
     file_object = open(args.input_file)
     file_data = file_object.readlines()
     file_object.close()
+    # Read title line and parse mutation chain and residue
     title_line = file_data[1]
     mut_chain, mut_residue = title_line.split()[3][:-1].split('_')
+    # Return nested list of rows starting with ATOM and HETATM
     atm_results = pal.read_pdb_atms_hetatms(file_data)
+    # Parse the atom coordinates of the mutation
     mutant_residues = list(filter(lambda x: x[5] == mut_chain and x[6] == mut_residue,
-                             atm_results))
+                                  atm_results))
     mutant_coordiantes = list(map(lambda x: x[8:11], mutant_residues))
+    # Return nested list of hetatms
     hetatm_residues = list(filter(lambda x: x[0] == "HETATM", atm_results))
-    # Add distance information to hetatm
+    # Create a new nested list with the minimum hetatm to mutation distance
     result = []
     for hetatm in hetatm_residues:
         min_dist = pal.min_distance(hetatm[8:11], mutant_coordiantes)
         result.append(["{0:.1f}".format(min_dist)] + hetatm)
+    # Output a header row and each list in csv format to stdout
     print(",".join(["Minimum Distance From Mutation"] + pal.PDB_COLUMN_NAMES))
     for i in result:
         print(",".join(i))
