@@ -53,7 +53,7 @@ PDB_COLUMN_NAMES = ["Molecule Type",
 def distance(coord_a: list, coord_b: list) -> float:
     """Return the euclidean distance between 2 sets of coordinates.
 
-    Given two equal lengthnumeric iterables, calculate the euclidean distance
+    Given two equal length numeric iterables, calculate the euclidean distance
     between them and return that value.
 
     :param coord_a: List of numeric values
@@ -70,8 +70,8 @@ def distance(coord_a: list, coord_b: list) -> float:
     return math.sqrt(sum_sqr_diff)
 
 
-def min_distance(query_coord: list, coord_list: list) -> float:
-    """Return the minimum distance of one coordinate to a list of others.
+def min_distance_coord_to_coords(query_coord: list, coord_list: list) -> float:
+    """Return the minimum distance of one coordinate to a group of others.
 
     A one-to-many comparison of a coordinate to a list of coordinates where the
     minimum distance value is returned.
@@ -85,6 +85,16 @@ def min_distance(query_coord: list, coord_list: list) -> float:
     result = math.inf
     for coord in coord_list:
         dist = distance(query_coord, coord)
+        if dist <= result:
+            result = dist
+    return result
+
+
+def min_distance_coords_to_coords(query_coords: list, coord_list: list) -> float:
+    """Return the minimum distance of one group of coordinates to another."""
+    result = math.inf
+    for query_coord in query_coords:
+        dist = min_distance_coord_to_coords(query_coord, coord_list)
         if dist <= result:
             result = dist
     return result
