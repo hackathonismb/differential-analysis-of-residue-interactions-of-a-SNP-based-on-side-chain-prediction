@@ -122,3 +122,21 @@ def read_pdb_atms_hetatms(pdb_lines: list) -> list:
         if line.startswith("ATOM") or line.startswith("HETATM"):
             result.append(pdb_row_to_list(line))
     return result
+
+
+def parse_data_by_residues(pdb_data, residues):
+    """Return subset of pdb data containing specified residues."""
+    result = list(filter(lambda x: x[6] in residues, pdb_data))
+    return result
+
+
+def coords_from_pdb_data(pdb_data):
+    """Return just coordinates from pdb data."""
+    result = list(map(lambda x: x[8:11], pdb_data))
+    return result
+
+
+def parse_mutation_title(title_line):
+    """Parse the mutation title for the chain and residue."""
+    chain, residue = title_line.split()[3][:-1].split('_')
+    return (chain, residue)
