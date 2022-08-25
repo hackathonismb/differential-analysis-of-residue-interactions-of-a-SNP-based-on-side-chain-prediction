@@ -49,6 +49,27 @@ PDB_COLUMN_NAMES = ["Molecule Type",
                     "Segment idenifier",
                     "Element symbol"]
 
+AA_DICT = {"ALA":"A",
+           "CYS":"C",
+           "ASP":"D",
+           "GLU":"E",
+           "PHE":"F",
+           "GLY":"G",
+           "HIS":"H",
+           "ILE":"I",
+           "LYS":"K",
+           "LEU":"L",
+           "MET":"M",
+           "ASN":"N",
+           "PRO":"P",
+           "GLN":"Q",
+           "ARG":"R",
+           "SER":"S",
+           "THR":"T",
+           "VAL":"V",
+           "TRP":"W",
+           "TYR":"Y"}
+
 
 def distance(coord_a: list, coord_b: list) -> float:
     """Return the euclidean distance between 2 sets of coordinates.
