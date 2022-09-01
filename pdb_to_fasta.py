@@ -6,6 +6,7 @@ in single-letter format as the sequence.
 """
 
 import argparse
+import re
 
 import pdb_analysis_lib as pal
 
@@ -52,7 +53,8 @@ def main():
             fasta_sequence = fasta_sequence + pal.AA_DICT[row[4]]
             residue += 1
     # Output FASTA header and sequence
-    header = args.pdb_file.rstrip(".pdb")
+    header = re.sub(r'^.*/', '', args.pdb_file)
+    header = header.rstrip(".pdb")
     print(f">{header}:{args.chain}")
     print(fasta_sequence)
 
