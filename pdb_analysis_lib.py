@@ -15,6 +15,7 @@ read_pdb_atms_hetatms: Return a nested list of PDB ATOM and HETATM rows.
 """
 
 import math
+import re
 
 
 PDB_INDEX_DELIMS = [0,
@@ -161,3 +162,30 @@ def parse_mutation_title(title_line):
     """Parse the mutation title for the chain and residue."""
     chain, residue = title_line.split()[3][:-1].split('_')
     return (chain, residue)
+
+def pdb_to_fasta(pdb_file, chain):
+    """Convert PDB sequence to FASTA."""
+    # Read file
+    file_object = open(pdb_file)
+    file_data = file_object.readlines()
+    file_object.close()
+    # Filter for ATOM lines
+    file_data = list(filter(lambda x: x.startswith("ATOM"), file_data))
+    # Split rows by data type
+    file_data = list(map(pdb_row_to_list, file_data))
+    # Filter by chain
+    file_data = list(filter(lambda x: x[5] == chain, file_data))
+    file_data = sorted(file_data, key=lambda x: int(x[6]))
+    # Convert AAs listed in PDB file to single letter format
+    # Initialize with first letter and residue number
+    fasta_sequence = AA_DICT[file_data[0][4]]
+    residue = int(file_data[0][6])
+    for row in file_data:
+        # If the next row has a new residue number, add it to the sequence
+        if int(row[6]) == residue + 1:
+            fasta_sequence = fasta_sequence + AA_DICT[row[4]]
+            residue += 1
+    # Output FASTA header and sequence
+    header = re.sub(r'^.*/', '', pdb_file)
+    header = header.rstrip(".pdb")
+    return (header, fasta_sequence)
