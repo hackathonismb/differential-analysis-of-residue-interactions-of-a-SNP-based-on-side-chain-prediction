@@ -177,7 +177,6 @@ def coords_from_pdb_data(pdb_data):
     result = list(map(lambda x: x[8:11], pdb_data))
     return result
 
-
 def parse_mutation_title(title_line):
     """Parse the mutation title for the chain and residue."""
     chain, residue = title_line.split()[3][:-1].split('_')
@@ -195,16 +194,22 @@ def pdb_to_fasta(pdb_file, chain):
     file_data = list(map(pdb_row_to_list, file_data))
     # Filter by chain
     file_data = list(filter(lambda x: x[5] == chain, file_data))
-    file_data = sorted(file_data, key=lambda x: int(x[6]))
+    # Check that the chain exists
+    if len(file_data) == 0:
+        raise ValueError("No AA to convert.")
+    #file_data = sorted(file_data, key=lambda x: int(x[6]))
     # Convert AAs listed in PDB file to single letter format
     # Initialize with first letter and residue number
     fasta_sequence = AA_DICT[file_data[0][4]]
-    residue = int(file_data[0][6])
+    completed_residues = set()
+    residue = file_data[0][6]
     for row in file_data:
-        # If the next row has a new residue number, add it to the sequence
-        if int(row[6]) == residue + 1:
+        if row[6] in completed_residues: # If there is a repeat residue number
+            raise ValueError("Repeated residues found.")
+        if row[6] != residue: # If there is a new residue
             fasta_sequence = fasta_sequence + AA_DICT[row[4]]
-            residue += 1
+            completed_residues.add(residue)
+            residue = row[6]
     # Output FASTA header and sequence
     header = re.sub(r'^.*/', '', pdb_file)
     header = header.rstrip(".pdb")

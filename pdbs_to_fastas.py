@@ -2,6 +2,7 @@
 
 import argparse
 import glob
+import logging
 
 import pdb_analysis_lib as pal
 
@@ -46,39 +47,54 @@ def main():
     mutation_files = list(filter(lambda x: "WT" not in x.split('/')[-1],
                                  files))
     if args.verbose:
-        print(mutation_files)
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.WARNING
+    logging.basicConfig(level=log_level)
     id_chain_pairs = set()
-    if args.verbose:
-        n_files = len(mutation_files)
-        print(f"Converting {n_files} mutation files...")
+    logging.info(f"Input of {len(files)} files")
+    logging.info(f"Converting {len(mutation_files)} mutation files")
     for mfile in mutation_files:
         mfile_name = mfile.split('/')[1]
         pdb_id, chain, residue, mutation = mfile_name.rstrip('.pdb').split('_')
         id_chain_pairs.add((pdb_id, chain))
-        header, sequence = pal.pdb_to_fasta(mfile, chain)
-        # Output file
-        output_file_name = f"{pdb_id}_{chain}_{residue}_{mutation}.fasta"
-        output_file = f"{output_folder}/{output_file_name}"
-        write_fasta_file(output_file, header, sequence)
-    if args.verbose:
-        print("Done!")
+        try:
+            header, sequence = pal.pdb_to_fasta(mfile, chain)
+        except KeyError as keyerror:
+            logging.warning(f"{mfile_name} not converted, unconventional AA: {keyerror}")
+        except ValueError as valerr:
+            logging.warning(f"{mfile_name} not converted: {valerr}")
+        except:
+            logging.critical(f"{mfile_name} cannot be processed.")
+            raise
+        else:
+            # Output file
+            output_file_name = f"{pdb_id}_{chain}_{residue}_{mutation}.fasta"
+            output_file = f"{output_folder}/{output_file_name}"
+            write_fasta_file(output_file, header, sequence)
+    logging.info("Done!")
     # Convert WT files
     wt_files = list(filter(lambda x: "WT" in x.split('/')[-1], files))
-    if args.verbose:
-        print(wt_files)
     wt_ids = list(map(lambda x: x.split('/')[-1].split('_')[0], wt_files))
     wt_file_dict = dict(zip(wt_ids, wt_files))
     id_chain_pairs = list(id_chain_pairs)
-    if args.verbose:
-        n_files = len(id_chain_pairs)
-        print(f"Converting {n_files} wildtype files...")
+    logging.info(f"Converting {len(wt_files)} wildtype files...")
     for pdb_id, chain in id_chain_pairs:
-        header, sequence = pal.pdb_to_fasta(wt_file_dict[pdb_id], chain)
-        output_file_name = f"{pdb_id}_{chain}_WT.fasta"
-        output_file = f"{output_folder}/{output_file_name}"
-        write_fasta_file(output_file, header, sequence)
-    if args.verbose:
-        print("Done!")
+        wtfile_name = wt_file_dict[pdb_id]
+        try:
+            header, sequence = pal.pdb_to_fasta(wtfile_name, chain)
+        except KeyError as keyerror:
+            logging.warning(f"{wtfile_name} not converted, unconventional AA: {keyerror}")
+        except ValueError as valerr:
+            logging.warning(f"{wtfile_name} not converted: {valerr}")
+        except:
+            logging.critical(f"{wtfile_name} cannot be processed.")
+            raise
+        else:
+            output_file_name = f"{pdb_id}_{chain}_WT.fasta"
+            output_file = f"{output_folder}/{output_file_name}"
+            write_fasta_file(output_file, header, sequence)
+    logging.info("Done!")
 
 
 if __name__ == "__main__":
