@@ -145,13 +145,33 @@ def read_pdb_atms_hetatms(pdb_lines: list) -> list:
             result.append(pdb_row_to_list(line))
     return result
 
+def read_pdb_atms(pdb_lines: list, mol_types: tuple = ("ATOM", "HETATM")) -> list:
+    """Return a nested list of PDB ATOM and HETATM rows.
 
+    Given a list of strings representing rows in a PDB file, return
+    all rows of specified molecule types.
+
+    :param pdb_lines: List of strings representing lines in a PDB file
+    :type pdb_lines: list
+    :return: Nested list of parsed molecule type rows
+    """
+    result = []
+    for line in pdb_lines:
+        if any([line.startswith(mtype) for mtype in mol_types]):
+            result.append(pdb_row_to_list(line))
+    return result
+
+# Convert these into a single function 
 def parse_data_by_residues(pdb_data, residues):
     """Return subset of pdb data containing specified residues."""
     result = list(filter(lambda x: x[6] in residues, pdb_data))
     return result
 
-
+def parse_data_by_chains(pdb_data, chains):
+    """Return subset of pdb data containing specified chains"""
+    result = list(filter(lambda x: x[5] in chains, pdb_data))
+    return result
+###
 def coords_from_pdb_data(pdb_data):
     """Return just coordinates from pdb data."""
     result = list(map(lambda x: x[8:11], pdb_data))

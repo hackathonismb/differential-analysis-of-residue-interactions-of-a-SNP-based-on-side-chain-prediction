@@ -1,23 +1,22 @@
 """Distance to features.
 
-This script parses the pdb file result of a mutation analysis from
-iCn3D for a single amino acid mutation and returns a csv output to
-stdout of the distance of all hetatms.
+This script takes a PDB file and a features file with parameters indicating
+the chain and residue of the AA and returns a table of distances to
+features outlined in uniprot.
 """
 
 import argparse
 import json
+import math
 
 import pdb_analysis_lib as pal
 
 
 def argument_parser():
-    """Parse arguments for the distance_to_features scipt."""
+    """Parse arguments for the distance_to_features script."""
     parser = argparse.ArgumentParser()
     required_arguments = parser.add_argument_group("Required Arguments")
-    required_arguments.add_argument("-p",
-                                    "--pdb_file",
-                                    required=True,
+    required_arguments.add_argument("pdb_file",
                                     type=str,
                                     help="Input PDB file")
     required_arguments.add_argument("-f",
@@ -25,6 +24,16 @@ def argument_parser():
                                     required=True,
                                     type=str,
                                     help="File of features in JSON format.")
+    required_arguments.add_argument("-c",
+                                    "--chain",
+                                    required=True,
+                                    type=str,
+                                    help="Chain the residue is part of.")
+    required_arguments.add_argument("-r",
+                                    "--residue",
+                                    required=True,
+                                    type=str,
+                                    help="Residue number to check distances from.")
     args = parser.parse_args()
     return args
 
@@ -43,8 +52,9 @@ def main():
     # Parse mutation information
     mut_chain, mut_residue = pal.parse_mutation_title(pdb_lines[1])
     # Filter for PDB atom data
-    pdb_data = pal.read_pdb_atms_hetatms(pdb_lines)
-    mut_data = pal.parse_data_by_residues(pdb_data, [mut_residue])
+    pdb_data = pal.read_pdb_atms(pdb_lines, ("ATOM"))
+    mut_data = pal.parse_data_by_residues(pdb_data, [args.residue])
+    mut_data = pal.parse_data_by_chains(mut_data, [args.chain])
     mut_coords = pal.coords_from_pdb_data(mut_data)
     # For each uniprot_id
     seen_residue = {}  # Track previously calculated distances
@@ -70,6 +80,9 @@ def main():
                         seen_residue[residue] = dist
     # Sort result by distance
     result = sorted(result, key=lambda x: x[0])
+    # Remove all infinity distances
+    result = list(filter(lambda x: x[0] != math.inf, result))
+    # Format the distances to a single decimal place
     result = list(map(lambda x: ["{0:.1f}".format(x[0])] + x[1:], result))
     # Output result
     print("Minimum Distance, Uniprot ID, Feature, Residue")
