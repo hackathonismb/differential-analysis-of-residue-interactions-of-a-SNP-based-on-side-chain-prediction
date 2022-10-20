@@ -14,6 +14,7 @@ pdb_row_to_list: Return a list of each item in an atm or hetatm row.
 read_pdb_atms_hetatms: Return a nested list of PDB ATOM and HETATM rows.
 """
 
+import json
 import math
 import re
 
@@ -214,3 +215,47 @@ def pdb_to_fasta(pdb_file, chain):
     header = re.sub(r'^.*/', '', pdb_file)
     header = header.rstrip(".pdb")
     return (header, fasta_sequence)
+
+def distance_to_features(pdb_file: str,
+                         features_file: str,
+                         chain_input: str,
+                         residue_input: str) -> list:
+    """Return distance to features as a nested list."""
+    # Read pdb file
+    with open(pdb_file) as pdb_file_object:
+        pdb_lines = pdb_file_object.readlines()
+    # Read features file
+    with open(features_file) as features_file_object:
+        features_dict = json.load(features_file_object)
+    # Filter for PDB atom data
+    pdb_data = read_pdb_atms(pdb_lines, ("ATOM"))
+    mut_data = parse_data_by_residues(pdb_data, [residue_input])
+    mut_data = parse_data_by_chains(mut_data, [chain_input])
+    mut_coords = coords_from_pdb_data(mut_data)
+    # For each uniprot_id
+    seen_residue = {}  # Track previously calculated distances
+    result = []
+    for uniprot_id in features_dict:
+        for feature in features_dict[uniprot_id]:
+            if feature not in ("Region"):
+                for residue in features_dict[uniprot_id][feature]:
+                    # If the distance was already calculated, append to result
+                    if residue in seen_residue:
+                        result.append([seen_residue[residue],
+                                       uniprot_id,
+                                       feature,
+                                       str(residue)])
+                    # Else, calculate the distance, append to result, and save
+                    else:
+                        residue_entries = parse_data_by_residues(pdb_data,
+                                                                     [str(residue)])
+                        feature_coords = coords_from_pdb_data(residue_entries)
+                        dist = min_distance_coords_to_coords(mut_coords,
+                                                                 feature_coords)
+                        result.append([dist, uniprot_id, feature, str(residue)])
+                        seen_residue[residue] = dist
+    # Sort result by distance
+    result = sorted(result, key=lambda x: x[0])
+    # Remove all infinity distances
+    result = list(filter(lambda x: x[0] != math.inf, result))
+    return result
