@@ -14,8 +14,10 @@ pdb_row_to_list: Return a list of each item in an atm or hetatm row.
 read_pdb_atms_hetatms: Return a nested list of PDB ATOM and HETATM rows.
 """
 
+from collections import OrderedDict
 import json
 import math
+import os
 import re
 
 
@@ -146,7 +148,7 @@ def read_pdb_atms_hetatms(pdb_lines: list) -> list:
             result.append(pdb_row_to_list(line))
     return result
 
-def read_pdb_atms(pdb_lines: list, mol_types: tuple = ("ATOM", "HETATM")) -> list:
+def read_pdb_atms(pdb_lines: list, mol_types: list = ["ATOM", "HETATM"]) -> list:
     """Return a nested list of PDB ATOM and HETATM rows.
 
     Given a list of strings representing rows in a PDB file, return
@@ -228,7 +230,7 @@ def distance_to_features(pdb_file: str,
     with open(features_file) as features_file_object:
         features_dict = json.load(features_file_object)
     # Filter for PDB atom data
-    pdb_data = read_pdb_atms(pdb_lines, ("ATOM"))
+    pdb_data = read_pdb_atms(pdb_lines, ["ATOM"])
     mut_data = parse_data_by_residues(pdb_data, [residue_input])
     mut_data = parse_data_by_chains(mut_data, [chain_input])
     mut_coords = coords_from_pdb_data(mut_data)
@@ -259,3 +261,64 @@ def distance_to_features(pdb_file: str,
     # Remove all infinity distances
     result = list(filter(lambda x: x[0] != math.inf, result))
     return result
+
+def residue_mapping(pdb_file_a,
+                    pdb_file_b,
+                    chain) -> dict:
+    # Read residues
+    file_lines = []
+    for i in (pdb_file_a, pdb_file_b):
+        with open(i) as file:
+            file_lines.append(file.readlines())
+    atoms = [pal.read_pdb_atms(i, ["ATOM"]) for i in file_lines]
+    atoms = [list(filter(lambda x: x[5] == chain, i)) for i in atoms]
+    residues = []
+    for atom_list in atoms:
+        # Append ordered unique residues from the atom data
+        residues.append(list(OrderedDict.fromkeys([i[6] for i in atom_list])))
+    result = dict(zip(residues[0], residues[1]))
+    return result
+
+def apply_residue_map(pdb_file, residue_dict, chain):
+    with open(pdb_file) as file:
+        lines = file.readlines()
+    result = []
+    for line in lines:
+        if line.startswith("ATOM") and chain == line[20:22].strip():
+            residue = line[22:26].strip()
+            new_residue = residue_dict[residue]
+            newline = line[:22] + f"{new_residue: >4}" + line[26:]
+            result.append(newline)
+        else:
+            result.append(line)
+    return result
+
+def convert_chain(pdb_file, chain_dict):
+    with open(pdb_file) as file:
+        lines = file.readlines()
+    result = []
+    for line in lines:
+        if line.startswith("ATOM"):
+            chain = line[20:22].strip()
+            new_chain = chain_dict[chain]
+            newline = line[:20] + f"{new_chain: >2}" + line[22:]
+            result.append(newline)
+        else:
+            result.append(line)
+    return result
+
+def correct_ember_file(ember_pdb, wt_pdb, chain, output):
+    # Convert to right chain
+    corr_chain = convert_chain(ember_pdb, {"A":chain})
+    with open(f"{output}.temp", 'w') as cchain_file:
+        for i in corr_chain:
+            cchain_file.write(i)
+    # Obtain residue dict
+    residue_dict = residue_mapping(f"{output}.temp", wt_pdb, chain)
+    # Apply residue conversion
+    result = apply_residue_map(f"{output}.temp", residue_dict, chain)
+    with open(output, 'w') as outfile:
+        for i in result:
+            outfile.write(i)
+    # Remove temp file
+    os.remove(f"{output}.temp")
