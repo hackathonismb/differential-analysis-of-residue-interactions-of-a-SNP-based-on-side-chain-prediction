@@ -19,6 +19,7 @@ import json
 import math
 import os
 import re
+import sys
 
 
 PDB_INDEX_DELIMS = [0,
@@ -270,7 +271,7 @@ def residue_mapping(pdb_file_a,
     for i in (pdb_file_a, pdb_file_b):
         with open(i) as file:
             file_lines.append(file.readlines())
-    atoms = [pal.read_pdb_atms(i, ["ATOM"]) for i in file_lines]
+    atoms = [read_pdb_atms(i, ["ATOM"]) for i in file_lines]
     atoms = [list(filter(lambda x: x[5] == chain, i)) for i in atoms]
     residues = []
     for atom_list in atoms:
@@ -315,6 +316,8 @@ def correct_ember_file(ember_pdb, wt_pdb, chain, output):
             cchain_file.write(i)
     # Obtain residue dict
     residue_dict = residue_mapping(f"{output}.temp", wt_pdb, chain)
+    if len(residue_dict) == 0:
+        raise ValueError(f"No map created between {output}.temp and {wt_pdb}")
     # Apply residue conversion
     result = apply_residue_map(f"{output}.temp", residue_dict, chain)
     with open(output, 'w') as outfile:

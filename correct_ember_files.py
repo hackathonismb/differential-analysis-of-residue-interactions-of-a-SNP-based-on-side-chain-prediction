@@ -7,6 +7,8 @@ features outlined in uniprot.
 
 import argparse
 import glob
+import os
+import sys
 
 import pdb_analysis_lib as pal
 
@@ -14,16 +16,15 @@ import pdb_analysis_lib as pal
 def argument_parser():
     """Parse arguments for the distance_to_features script."""
     parser = argparse.ArgumentParser()
-    required_arguments = parser.add_argument_group("Required Arguments")
-    required_arguments.add_argument("ember_folder",
+    parser.add_argument("ember_folder",
                                     type=str,
-                                    help="Input PDB file")
-    required_arguments.add_argument("wt_folder",
+                                    help="Folder of original EMBER3D files.")
+    parser.add_argument("wt_folder",
                                     type=str,
-                                    help="File of features in JSON format.")
-    required_arguments.add_argument("output_folder",
+                                    help="Folder of corresponding WT pdb files.")
+    parser.add_argument("output_folder",
                                     type=str,
-                                    help="Chain the residue is part of.")
+                                    help="Output folder.")
     args = parser.parse_args()
     return args
 
@@ -32,10 +33,19 @@ def main():
     args = argument_parser()
     ember_folder = args.ember_folder.rstrip('/')
     wt_folder = args.wt_folder.rstrip('/')
+
     output_folder = args.output_folder.rstrip('/')
     os.makedirs(output_folder, exist_ok=True)
     ember_files = glob.glob(f"{ember_folder}/*.pdb")
-    for i in ember_files:
-        file_name = i.split('/')[-1]
-        pdb_id, chain = file.split('_')[0:2]
-        pal.correct_ember_file(i, f"{wt_folder}/{pdb}_{chain}_WT.pdb", chain, f"{output_folder}/{file}")
+    for ember_file_path in ember_files:
+        file_name = ember_file_path.split('/')[-1]
+        pdb_id, chain = file_name.split('_')[0:2]
+        try:
+            pal.correct_ember_file(ember_file_path, f"{wt_folder}/{pdb_id}_WT.pdb", chain, f"{output_folder}/{file_name}")
+        except:
+            print(f"Issue correcting residue numbers for: {ember_file_path}", file=sys.stderr)
+            raise
+
+
+if __name__ == "__main__":
+    main()
