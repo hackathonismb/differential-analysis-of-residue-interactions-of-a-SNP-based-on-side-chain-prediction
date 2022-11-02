@@ -10,6 +10,8 @@ This project seeks to offer additional improvements to the mutation structure es
 
 ## Project Workflow
 
+Information on the analysis workflow can be found on the [wiki](https://github.com/hackathonismb/differential-analysis-of-residue-interactions-of-a-SNP-based-on-side-chain-prediction/wiki).
+
 ![Overview](Overview.png)
 
 ## Team
