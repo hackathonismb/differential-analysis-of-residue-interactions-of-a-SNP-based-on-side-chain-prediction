@@ -6,7 +6,6 @@
 # https://github.com/ncbi/icn3d/tree/master/icn3dnode.
 
 import os, sys, time
-import tempfile 
 from subprocess import PIPE, DEVNULL, STDOUT, Popen, run, TimeoutExpired, call
 from multiprocessing import Process
 
@@ -15,11 +14,13 @@ class GROMACS_protocol:
                  DATA_DIR,
                  PROJ_DIR,
                  DUMP_DIR,
-                 WORKING_DIR):
+                 WORKING_DIR,
+                 exe = 'gmx' ):
         self.DATA_DIR = DATA_DIR
         self.PROJ_DIR = PROJ_DIR
         self.DUMP_DIR = DUMP_DIR
         self.WORKING_DIR = WORKING_DIR
+        self.exe = exe
         self.filenames_list = [filename for filename in os.listdir(self.DATA_DIR) if 'pdb' in filename]
         self.identifiers_list =   [filename.rsplit('.pdb')[0] for filename in self.filenames_list]
         self.files_req = [f'{self.WORKING_DIR}/ions.mdp',
@@ -37,8 +38,7 @@ class GROMACS_protocol:
         ec = call(command, stdout=DEVNULL, stderr=STDOUT)
         if ec == 1:
             comm_ = ' '.join(command)
-            sys.stdout.write(f'error while calling: {comm_} \n')
-            sys.exit()
+            raise ValueError(f'error while calling: {comm_} \n')
                 
             
     @staticmethod
@@ -68,21 +68,21 @@ class GROMACS_protocol:
         # STEP 2: Here we select AMBER99SB-ILDN force-field (#6 in the list) 
         # for describing atom-atom interaction energies to be used in the GROMACS simulations.
         if not os.path.exists(f'{identifier}_processed.gro'):
-            pdb2gmx_command = ['gmx_mpi_d', 'pdb2gmx',
+            pdb2gmx_command = [self.exe, 'pdb2gmx',
                                '-f', f'{identifier}_clean.pdb',  
                                '-o', f'{identifier}_processed.gro',
                                '-water', 'spce', '-ff', 'amber99sb-ildn']
             self.suprocess_call(pdb2gmx_command)
         # STEP 3: Here we create a simulation box 0.5nm from the protein edge in all 6 directions.     
         if not os.path.exists(f'{identifier}_newbox.gro'):
-            editconf_command = ['gmx_mpi_d', 'editconf',
+            editconf_command = [self.exe, 'editconf',
                                 '-f', f'{identifier}_processed.gro',  
                                '-o', f'{identifier}_newbox.gro',
                                '-c', '-d', '0.5', '-bt', 'cubic']
             self.suprocess_call(editconf_command)
         # STEP 4: Here we add water molecules in the simulation box and new topology file is written.
         if not os.path.exists(f'{identifier}_solv.gro'):
-            solvate_command = ['gmx_mpi_d', 'solvate',
+            solvate_command = [self.exe, 'solvate',
                                '-cp', f'{identifier}_newbox.gro',  
                                '-cs', 'spc216.gro',
                                '-o', f'{identifier}_solv.gro',
@@ -90,7 +90,7 @@ class GROMACS_protocol:
             self.suprocess_call(solvate_command)
         # STEP 5: Generate parameter file ions.tpr for all atoms.
         if not os.path.exists(f'ions.tpr'):
-            grompp_command = ['gmx_mpi_d', 'grompp',
+            grompp_command = [self.exe, 'grompp',
                               '-f', f'{self.WORKING_DIR}/ions.mdp',  
                               '-c', f'{identifier}_solv.gro',
                               '-p', 'topol.top', 
@@ -100,7 +100,7 @@ class GROMACS_protocol:
         # STEP 6: This will add ions to your simulation box and replace 
         # the solvent molecules if there is a clash.
         if not os.path.exists(f'{identifier}_solv_ions.gro'):
-            genion_command = ['echo', 'SOL', '|', 'gmx_mpi_d', 'genion',
+            genion_command = ['echo', 'SOL', '|', self.exe, 'genion',
                               '-s', f'ions.tpr',  
                               '-o', f'{identifier}_solv_ions.gro',
                               '-p', f'topol.top',
@@ -109,18 +109,18 @@ class GROMACS_protocol:
             os.system(' '.join(genion_command)) 
         # STEP 7: Energy minimization
         if not os.path.exists('em.tpr'):
-            em_command = ['gmx_mpi_d', 'grompp',
+            em_command = [self.exe, 'grompp',
                           '-f', f'{self.WORKING_DIR}/minim.mdp',  
                           '-c', f'{identifier}_solv_ions.gro',
                           '-p', 'topol.top', 
                           '-o', 'em.tpr']
             self.suprocess_call(em_command)
         # STEP 8: This runs the energy minimization.
-        run_em_command = ['gmx_mpi_d', 'mdrun', '-v', '-deffnm', 'em']
+        run_em_command = [self.exe, 'mdrun', '-v', '-deffnm', 'em']
         self.suprocess_call(run_em_command)
         # STEP 9: This creates input parameters for NVT molecular dynamics.
         if not os.path.exists(f'nvt.tpr'):
-            nvt_md_command = ['gmx_mpi_d', 'grompp',
+            nvt_md_command = [self.exe, 'grompp',
                               '-f', f'{self.WORKING_DIR}/nvt.mdp',
                               '-c', 'em.gro',
                               '-r', 'em.gro',
@@ -129,14 +129,14 @@ class GROMACS_protocol:
             self.suprocess_call(nvt_md_command)
         # STEP 10: This runs the NVT MD.
         tic = time.time()
-        run_nvt_md_command = ['gmx_mpi_d', 'mdrun', '-deffnm', 'nvt']
+        run_nvt_md_command = [self.exe, 'mdrun', '-deffnm', 'nvt']
         self.suprocess_call(run_nvt_md_command)
         tac = time.time()
-        sys.stdout.write(f'NVT MD {identifier} - took {round((tac-tic)/60,2)} minutes')
+        sys.stdout.write(f'NVT MD {identifier} - took {round((tac-tic)/60,2)} minutes \n')
         tic = time.time()
         # STEP 11: This creates input parameters for NPT molecular dynamics.
         if not os.path.exists(f'npt.tpr'):
-            npt_md_command = ['gmx_mpi_d', 'grompp',
+            npt_md_command = [self.exe, 'grompp',
                               '-f', f'{self.WORKING_DIR}/npt.mdp',
                               '-c', 'nvt.gro',
                               '-r', 'nvt.gro',
@@ -145,10 +145,10 @@ class GROMACS_protocol:
                               '-o', 'npt.tpr']
             self.suprocess_call(npt_md_command)
         # STEP 12: This runs the NPT MD for 100ps.
-        run_npt_md_command = ['gmx_mpi_d', 'mdrun', '-deffnm', 'npt']
+        run_npt_md_command = [self.exe, 'mdrun', '-deffnm', 'npt']
         self.suprocess_call(run_npt_md_command)
         tac = time.time()
-        sys.stdout.write(f'NPT MD {identifier} - took {round((tac-tic)/60,2)} minutes')
+        sys.stdout.write(f'NPT MD {identifier} - took {round((tac-tic)/60,2)} minutes \n')
         sys.stdout.write(' ')
         
         
@@ -156,12 +156,19 @@ class GROMACS_protocol:
         args_list = [identifier for identifier in args_list 
                      if not os.path.exists(f'{self.DUMP_DIR}/{identifier}')]  
         if args_list:
-            batches_list = [i for i in self.batch(args_list, 10)]
-            for batch in batches_list:
-                children = [Process(target=self.run_protocol, args=(identifier,)) for identifier in batch]
-                for child in children:
-                    child.start()
-                for child in children:
-                    child.join()
+            for arg in args_list:
+                try:
+                    self.run_protocol(arg)
+                except ValueError:
+                    sys.stdout.write(f'**** ERROR PROCESSING: {arg} ****\n')
+                    continue
+                
+#             batches_list = [i for i in self.batch(args_list, 10)]
+#             for batch in batches_list:
+#                 children = [Process(target=self.run_protocol, args=(identifier,)) for identifier in batch]
+#                 for child in children:
+#                     child.start()
+#                 for child in children:
+#                     child.join()
                     
                     
