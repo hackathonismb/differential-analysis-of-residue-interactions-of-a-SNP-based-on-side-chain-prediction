@@ -72,12 +72,11 @@ class GromacsProtocol:
             os.mkdir(simulation_directory)
         os.chdir(simulation_directory)
         time.sleep(5)
-        node = '/software/sse/easybuild/prefix/software/nodejs/16.15.1-GCCcore-11.3.0-nsc1/bin/node'
         # STEP 1: The following step will remove all hetero atoms,
         # use one chain name, and add missing atoms
         if not os.path.exists(f'{identifier}_nohet.pdb'):
             rmhet_command = [
-                node,
+                "node",
                 os.path.join(self.mdp_directory, 'rmhet.js'),
                 os.path.join(self.pdb_directory, f'{identifier}.pdb')
             ]
@@ -85,7 +84,7 @@ class GromacsProtocol:
                 run(rmhet_command, stdout=out)
         if not os.path.exists(f'{identifier}_clean.pdb'):
             addmissingatom_command = [
-                node,
+                "node",
                 os.path.join(self.mdp_directory, 'addmissingatoms.js'),
                 f'{identifier}_nohet.pdb'
             ]
