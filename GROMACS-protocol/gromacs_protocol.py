@@ -5,7 +5,9 @@
 # c) Download the script "rmhet.js" and "addmissingatoms.js" to your directory from
 # https://github.com/ncbi/icn3d/tree/master/icn3dnode.
 
-import os, sys, time
+import os
+import sys
+import time
 from subprocess import PIPE, DEVNULL, STDOUT, Popen, run, TimeoutExpired, call
 from multiprocessing import Process
 
