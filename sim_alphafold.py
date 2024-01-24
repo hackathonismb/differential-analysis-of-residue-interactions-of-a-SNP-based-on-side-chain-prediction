@@ -18,6 +18,11 @@ def argument_parser():
         type=str,
         help='alphafold dataset',
     )
+    parser.add_argument(
+        '--alphafold_directory',
+        type=str,
+        help='alphafold directory',
+    )
     args = parser.parse_args()
     return args
 
@@ -27,6 +32,7 @@ def main():
     fasta_directory = args.fasta_directory
     output_directory = args.output_directory
     alphafold_dataset = args.alphafold_dataset
+    alphafold_directory = args.alphafold_directory
     if not os.path.exists(output_directory):
         os.mkdir(output_directory)
     filenames_list = [
@@ -53,7 +59,7 @@ def main():
             # at uppmax
             alphafold_command = [
                 'bash',
-                'run_alphafold.sh',
+                os.path.join(alphafold_directory, 'run_alphafold.sh'),
                 f'-d {alphafold_dataset}',
                 f'--fasta_paths={input_path}',
                 f'--output_dir={out_path}',
