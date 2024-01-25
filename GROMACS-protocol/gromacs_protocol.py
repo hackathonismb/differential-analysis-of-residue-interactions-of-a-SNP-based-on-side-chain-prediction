@@ -186,7 +186,8 @@ class GromacsProtocol:
                 'NA',
                 '-nname',
                 'CL',
-                '-neutral'
+                '-neutral',
+                '> /dev/null'  # supress stdout
             ]
             os.system(' '.join(genion_command)) 
         # STEP 7: Energy minimization
