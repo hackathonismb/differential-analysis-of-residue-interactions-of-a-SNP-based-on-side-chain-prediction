@@ -1,4 +1,4 @@
-from gromacs_protocol import GromacsPprotocol
+from gromacs_protocol import GromacsProtocol
 
 
 def argument_parser():
