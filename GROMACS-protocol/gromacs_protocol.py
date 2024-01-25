@@ -33,6 +33,8 @@ class GromacsProtocol:
             filename.rsplit('.pdb')[0]
             for filename in self.filenames_list
         ]
+        if not os.path.exists(self.output_directory):
+            os.mkdir(self.output_directory)
         self.files_req = [
             os.path.join(self.mdp_directory, 'ions.mdp'),
             os.path.join(self.mdp_directory, 'minim.mdp'),
