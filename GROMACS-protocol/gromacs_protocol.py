@@ -297,8 +297,9 @@ class GromacsProtocol:
                     self.protocol(
                         identifier=arg
                     )
-                except ValueError:
+                except ValueError as e:
                     sys.stdout.write(
                         f'**** ERROR PROCESSING: {arg} ****\n'
+                        f'{e}\n'
                     )
                     continue

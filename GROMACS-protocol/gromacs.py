@@ -53,4 +53,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-# python3 gromacs.py --pdb_directory ../test_directory_pdb --output_directory ../test_directory_output --mdp_directory /proj/naiss2023-22-736/msarrias/projects/ismb/differential-analysis-of-residue-interactions-of-a-SNP-based-on-side-chain-prediction/GROMACS-protocol
+# python3 gromacs.py --pdb_directory ../test_directory_pdb --output_directory ../test_directory_output --mdp_directory /proj/naiss2023-22-736/msarrias/projects/ismb/differential-analysis-of-residue-interactions-of-a-SNP-based-on-side-chain-prediction/GROMACS-protocol --hard_force
