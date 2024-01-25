@@ -18,12 +18,12 @@ class GromacsProtocol:
             pdb_directory: str,
             output_directory: str,
             mdp_directory: str,
-            exe='gmx'
+            GMX='gmx'
     ):
         self.pdb_directory = pdb_directory
         self.output_directory = output_directory
         self.mdp_directory = mdp_directory
-        self.exe = exe
+        self.GMX = GMX
         self.filenames_list = [
             filename
             for filename in os.listdir(self.pdb_directory)
@@ -100,7 +100,7 @@ class GromacsProtocol:
         # to be used in the GROMACS simulations.
         if not os.path.exists(f'{identifier}_processed.gro'):
             pdb2gmx_command = [
-                self.exe,
+                self.GMX,
                 'pdb2gmx',
                 '-f',
                 f'{identifier}_clean.pdb',
@@ -116,7 +116,7 @@ class GromacsProtocol:
         # from the protein edge in all 6 directions.
         if not os.path.exists(f'{identifier}_newbox.gro'):
             editconf_command = [
-                self.exe, 'editconf',
+                self.GMX, 'editconf',
                 '-f',
                 f'{identifier}_processed.gro',
                 '-o',
@@ -132,7 +132,7 @@ class GromacsProtocol:
         # simulation box and new topology file is written.
         if not os.path.exists(f'{identifier}_solv.gro'):
             solvate_command = [
-                self.exe, 'solvate',
+                self.GMX, 'solvate',
                 '-cp',
                 f'{identifier}_newbox.gro',
                 '-cs',
@@ -146,7 +146,7 @@ class GromacsProtocol:
         # STEP 5: Generate parameter file ions.tpr for all atoms.
         if not os.path.exists(f'ions.tpr'):
             grompp_command = [
-                self.exe,
+                self.GMX,
                 'grompp',
                 '-f',
                 os.path.join(self.mdp_directory, "ions.mdp"),
@@ -167,7 +167,7 @@ class GromacsProtocol:
                 'echo',
                 'SOL',
                 '|',
-                self.exe,
+                self.GMX,
                 'genion',
                 '-s',
                 f'ions.tpr',
@@ -185,7 +185,7 @@ class GromacsProtocol:
         # STEP 7: Energy minimization
         if not os.path.exists('em.tpr'):
             em_command = [
-                self.exe,
+                self.GMX,
                 'grompp',
                 '-f',
                 f'{self.mdp_directory}/minim.mdp',
@@ -199,7 +199,7 @@ class GromacsProtocol:
             self.suprocess_call(em_command)
         # STEP 8: This runs the energy minimization.
         run_em_command = [
-            self.exe,
+            self.GMX,
             'mdrun',
             '-v',
             '-deffnm',
@@ -210,7 +210,7 @@ class GromacsProtocol:
         # for NVT molecular dynamics.
         if not os.path.exists(f'nvt.tpr'):
             nvt_md_command = [
-                self.exe,
+                self.GMX,
                 'grompp',
                 '-f',
                 f'{self.mdp_directory}/nvt.mdp',
@@ -227,7 +227,7 @@ class GromacsProtocol:
         # STEP 10: This runs the NVT MD.
         tic = time.time()
         run_nvt_md_command = [
-            self.exe,
+            self.GMX,
             'mdrun',
             '-deffnm',
             'nvt'
@@ -242,7 +242,7 @@ class GromacsProtocol:
         # STEP 11: This creates input parameters for NPT molecular dynamics.
         if not os.path.exists(f'npt.tpr'):
             npt_md_command = [
-                self.exe,
+                self.GMX,
                 'grompp',
                 '-f',
                 f'{self.mdp_directory}/npt.mdp',
@@ -260,7 +260,7 @@ class GromacsProtocol:
             self.suprocess_call(npt_md_command)
         # STEP 12: This runs the NPT MD for 100ps.
         run_npt_md_command = [
-            self.exe,
+            self.GMX,
             'mdrun',
             '-deffnm',
             'npt'

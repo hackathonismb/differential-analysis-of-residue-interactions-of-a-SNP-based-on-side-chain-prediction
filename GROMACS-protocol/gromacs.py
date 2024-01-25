@@ -20,7 +20,7 @@ def argument_parser():
              f' nvt.mdp,npt.mdp should be in the mdp directory',
     )
     parser.add_argument(
-        '--exe',
+        '--GMX',
         type=str,
         help='executable',
         default='gmx',
@@ -35,7 +35,7 @@ def main():
         pdb_directory=args.pdb_directory,
         output_directory=args.output_directory,
         mdp_directory=args.mdp_directory,
-        exe=args.exe
+        GMX=args.GMX
     )
     gromacs_prot.main(
         args_list=gromacs_prot.identifiers_list
@@ -44,3 +44,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# python3 gromacs.py --pdb_directory ../test_directory_pdb --output_directory ../test_directory_output --mdp_directory /proj/naiss2023-22-736/msarrias/projects/ismb/differential-analysis-of-residue-interactions-of-a-SNP-based-on-side-chain-prediction/GROMACS-protocol
