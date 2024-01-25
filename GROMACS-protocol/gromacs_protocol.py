@@ -187,7 +187,7 @@ class GromacsProtocol:
                 '-nname',
                 'CL',
                 '-neutral',
-                '> /dev/null'  # supress stdout
+                '> /dev/null 2>&1'  # supress stdout
             ]
             os.system(' '.join(genion_command)) 
         # STEP 7: Energy minimization
@@ -266,7 +266,7 @@ class GromacsProtocol:
                 'npt.tpr'
             ]
             self.suprocess_call(npt_md_command)
-        # STEP 12: This runs the NPT MD for 100ps.
+        # STEP 12: This runs the NPT MD for 50k steps.
         run_npt_md_command = [
             self.GMX,
             'mdrun',
