@@ -21,6 +21,12 @@ def argument_parser():
              f' nvt.mdp,npt.mdp should be in the mdp directory',
     )
     parser.add_argument(
+        '--hard_force',
+        action='store_true',
+        default=False,
+        help='Remove all files in output directory if it exists.'
+    )
+    parser.add_argument(
         '--GMX',
         type=str,
         help='executable',
@@ -36,7 +42,8 @@ def main():
         pdb_directory=args.pdb_directory,
         output_directory=args.output_directory,
         mdp_directory=args.mdp_directory,
-        GMX=args.GMX
+        GMX=args.GMX,
+        hard_force=args.hard_force,
     )
     gromacs_prot.main(
         args_list=gromacs_prot.identifiers_list

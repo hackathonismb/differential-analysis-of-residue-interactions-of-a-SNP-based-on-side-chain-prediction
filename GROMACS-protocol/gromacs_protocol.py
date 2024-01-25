@@ -8,6 +8,7 @@
 import os
 import sys
 import time
+import shutil
 from subprocess import PIPE, DEVNULL, STDOUT, Popen, run, TimeoutExpired, call
 from multiprocessing import Process
 
@@ -18,12 +19,14 @@ class GromacsProtocol:
             pdb_directory: str,
             output_directory: str,
             mdp_directory: str,
-            GMX='gmx'
+            GMX='gmx',
+            hard_force: bool = False,
     ):
         self.pdb_directory = pdb_directory
         self.output_directory = output_directory
         self.mdp_directory = mdp_directory
         self.GMX = GMX
+        self.hard_force = hard_force
         self.filenames_list = [
             filename
             for filename in os.listdir(self.pdb_directory)
@@ -33,6 +36,10 @@ class GromacsProtocol:
             filename.rsplit('.pdb')[0]
             for filename in self.filenames_list
         ]
+        if self.hard_force:
+            if os.path.exists(self.output_directory):
+                shutil.rmtree(self.output_directory)
+
         if not os.path.exists(self.output_directory):
             os.mkdir(self.output_directory)
         self.files_req = [
