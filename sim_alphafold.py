@@ -67,7 +67,7 @@ def main():
                 '--model_preset=monomer',
                 '--db_preset=full_dbs'
             ]
-            os.system(' '.join(alphafold_command), shell=True)
+            os.system(' '.join(alphafold_command))
 
 
 if __name__ == "__main__":
