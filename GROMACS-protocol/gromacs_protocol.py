@@ -55,9 +55,9 @@ class GromacsProtocol:
                 'all identifiers should be distinct'
             )
         # remove incomplete runs
-        for identifier in os.listdir(output_directory_paths):
+        for identifier in os.listdir(self.output_directory):
             dir_path = os.path.join(
-                output_directory_paths,
+                self.output_directory,
                 identifier
             )
             contains_edr = any(
