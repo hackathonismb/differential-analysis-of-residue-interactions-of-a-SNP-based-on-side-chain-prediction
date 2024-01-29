@@ -19,6 +19,8 @@ class GromacsProtocol:
             pdb_directory: str,
             output_directory: str,
             mdp_directory: str,
+            ntmpi: str,
+            ntomp: str,
             GMX='gmx',
             hard_force: bool = False,
     ):
@@ -26,6 +28,8 @@ class GromacsProtocol:
         self.output_directory = output_directory
         self.mdp_directory = mdp_directory
         self.GMX = GMX
+        self.ntmpi = ntmpi
+        self.ntomp = ntomp
         self.hard_force = hard_force
         self.identifiers_list = [
             filename.rsplit('_NoHOH.pdb')[0]
@@ -118,7 +122,7 @@ class GromacsProtocol:
                 self.GMX,
                 'pdb2gmx',
                 '-f',
-                f'{identifier}_NoHOH.pdb',
+                os.path.join(self.pdb_directory, f'{identifier}_NoHOH.pdb'),
                 '-o',
                 f'{identifier}_processed.gro',
                 '-water',
@@ -131,7 +135,8 @@ class GromacsProtocol:
         # from the protein edge in all 6 directions.
         if not os.path.exists(f'{identifier}_newbox.gro'):
             editconf_command = [
-                self.GMX, 'editconf',
+                self.GMX,
+                'editconf',
                 '-f',
                 f'{identifier}_processed.gro',
                 '-o',
@@ -147,7 +152,8 @@ class GromacsProtocol:
         # simulation box and new topology file is written.
         if not os.path.exists(f'{identifier}_solv.gro'):
             solvate_command = [
-                self.GMX, 'solvate',
+                self.GMX,
+                'solvate',
                 '-cp',
                 f'{identifier}_newbox.gro',
                 '-cs',
@@ -217,6 +223,9 @@ class GromacsProtocol:
         run_em_command = [
             self.GMX,
             'mdrun',
+            self.ntmpi,
+            '-ntomp',
+            self.ntomp,
             '-v',
             '-deffnm',
             'em'
@@ -245,6 +254,9 @@ class GromacsProtocol:
         run_nvt_md_command = [
             self.GMX,
             'mdrun',
+            self.ntmpi,
+            '-ntomp',
+            self.ntomp,
             '-deffnm',
             'nvt'
         ]
@@ -278,6 +290,9 @@ class GromacsProtocol:
         run_npt_md_command = [
             self.GMX,
             'mdrun',
+            self.ntmpi,
+            '-ntomp',
+            self.ntomp,
             '-deffnm',
             'npt'
         ]
