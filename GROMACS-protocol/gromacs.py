@@ -39,7 +39,8 @@ def argument_parser():
              ' This sets how many separate processes will be '
              'spawned for parallel computation. Typically, '
              'this should not exceed the number of physical '
-             'or logical CPU cores available.'
+             'or logical CPU cores available.',
+        default=""
     )
     parser.add_argument(
         '--ntomp',
