@@ -65,21 +65,31 @@ class GromacsProtocol:
                 identifier
             )
             contains_edr = any(
-                file.endswith('.edr') for file in os.listdir(dir_path)
+                file.endswith('.edr')
+                for file in os.listdir(dir_path)
             )
             if not contains_edr:
                 shutil.rmtree(dir_path)
 
     @staticmethod
-    def subprocess_call(command_list: list, capture_output=False):
-        stdout_setting = PIPE if capture_output else DEVNULL
+    def subprocess_call(
+            command_list: list,
+            capture_output=False
+    ):
+        if capture_output:
+            stdout_setting = PIPE
+        else:
+            stdout_setting = DEVNULL
         result = run(
             command_list,
             stdout=stdout_setting,
             stderr=PIPE
         )
         if result.returncode != 0:
-            error_message = result.stderr.decode('utf-8') if result.stderr else 'Unknown error'
+            if result.stderr:
+                error_message = result.stderr.decode('utf-8')
+            else:
+                error_message = 'Unknown error'
             raise ValueError(f'{error_message}')
         else:
             return result
@@ -88,14 +98,23 @@ class GromacsProtocol:
             self,
             identifier: str,
     ):
-        simulation_directory = os.path.join(self.output_directory, identifier)
+        simulation_directory = os.path.join(
+            self.output_directory,
+            identifier
+        )
         if not os.path.exists(simulation_directory):
             os.mkdir(simulation_directory)
         os.chdir(simulation_directory)
         # STEP 0:remove any water molecules to create a clean PDB:
-        pdb_file_direct = os.path.join(self.pdb_directory, f'{identifier}_NoHOH.pdb')
+        pdb_file_direct = os.path.join(
+            self.pdb_directory,
+            f'{identifier}_NoHOH.pdb'
+        )
         if not os.path.exists(pdb_file_direct):
-            pdb_file_direct = os.path.join(self.pdb_directory, f'{identifier}.pdb')
+            pdb_file_direct = os.path.join(
+                self.pdb_directory,
+                f'{identifier}.pdb'
+            )
             molecules = ["HOH", "PO4"]
             pattern = '|'.join(molecules)
             rmv_hoh_command = [
@@ -148,7 +167,10 @@ class GromacsProtocol:
                 '-ff',
                 'amber99sb-ildn'
             ]
-            self.subprocess_call(pdb2gmx_command)
+            self.subprocess_call(
+                command_list=pdb2gmx_command,
+                capture_output=False
+            )
         # STEP 3: Here we create a simulation box 0.5nm
         # from the protein edge in all 6 directions.
         if not os.path.exists(f'{identifier}_newbox.gro'):
@@ -165,7 +187,10 @@ class GromacsProtocol:
                 '-bt',
                 'cubic'
             ]
-            self.subprocess_call(editconf_command)
+            self.subprocess_call(
+                command_list=editconf_command,
+                capture_output=False
+            )
         # STEP 4: Here we add water molecules in the
         # simulation box and new topology file is written.
         if not os.path.exists(f'{identifier}_solv.gro'):
@@ -181,7 +206,10 @@ class GromacsProtocol:
                 '-p',
                 f'topol.top'
             ]
-            self.subprocess_call(solvate_command)
+            self.subprocess_call(
+                command_list=solvate_command,
+                capture_output=False
+            )
         # STEP 5: Generate parameter file ions.tpr for all atoms.
         if not os.path.exists(f'ions.tpr'):
             grompp_command = [
@@ -198,7 +226,10 @@ class GromacsProtocol:
                 '-maxwarn',
                 '2'
             ]
-            self.subprocess_call(grompp_command)
+            self.subprocess_call(
+                command_list=grompp_command,
+                capture_output=False
+            )
         # STEP 6: This will add ions to your simulation box and replace
         # the solvent molecules if there is a clash.
         if not os.path.exists(f'{identifier}_solv_ions.gro'):
@@ -236,7 +267,10 @@ class GromacsProtocol:
                 '-o',
                 'em.tpr'
             ]
-            self.subprocess_call(em_command)
+            self.subprocess_call(
+                command_list=em_command,
+                capture_output=False
+            )
         # STEP 8: This runs the energy minimization.
         run_em_command = [
             self.GMX,
@@ -248,7 +282,10 @@ class GromacsProtocol:
         ]
         if self.ntmpi:
             run_em_command.extend(['-ntmpi', str(self.ntmpi)])
-        self.subprocess_call(run_em_command)
+        self.subprocess_call(
+            command_list=run_em_command,
+            capture_output=False
+        )
         # STEP 9: This creates input parameters
         # for NVT molecular dynamics.
         if not os.path.exists(f'nvt.tpr'):
@@ -266,7 +303,10 @@ class GromacsProtocol:
                 '-o',
                 'nvt.tpr'
             ]
-            self.subprocess_call(nvt_md_command)
+            self.subprocess_call(
+                command_list=nvt_md_command,
+                capture_output=False
+            )
         # STEP 10: This runs the NVT MD.
         tic = time.time()
         run_nvt_md_command = [
@@ -279,7 +319,10 @@ class GromacsProtocol:
         ]
         if self.ntmpi:
             run_nvt_md_command.extend(['-ntmpi', str(self.ntmpi)])
-        self.subprocess_call(run_nvt_md_command)
+        self.subprocess_call(
+            command_list=run_nvt_md_command,
+            capture_output=False
+        )
         tac = time.time()
         sys.stdout.write(
             f'NVT MD {identifier} '
@@ -304,7 +347,10 @@ class GromacsProtocol:
                 '-o',
                 'npt.tpr'
             ]
-            self.subprocess_call(npt_md_command)
+            self.subprocess_call(
+                command_list=npt_md_command,
+                capture_output=False
+            )
         # STEP 12: This runs the NPT MD for 100ps.
         run_npt_md_command = [
             self.GMX,
@@ -316,7 +362,10 @@ class GromacsProtocol:
         ]
         if self.ntmpi:
             run_npt_md_command.extend(['-ntmpi', str(self.ntmpi)])
-        self.subprocess_call(run_npt_md_command)
+        self.subprocess_call(
+            command_list=run_npt_md_command,
+            capture_output=False
+        )
         tac = time.time()
         sys.stdout.write(
             f'NPT MD {identifier} '
@@ -339,7 +388,7 @@ class GromacsProtocol:
             for arg in args_list:
                 try:
                     self.protocol(
-                        identifier=arg
+                        identifier=arg,
                     )
                 except ValueError as e:
                     sys.stdout.write(
