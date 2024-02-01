@@ -71,24 +71,18 @@ class GromacsProtocol:
                 shutil.rmtree(dir_path)
 
     @staticmethod
-    def subprocess_call(
-            command_list: list,
-    ):
-        try:
-            # Run the command, redirect stdout to DEVNULL, capture stderr
-            result = run(
-                command_list,
-                stdout=DEVNULL,
-                stderr=PIPE
-            )
-            # Check the return code of the command
-            if result.returncode != 0:
-                command_string = ' '.join(command_list)
-                # Decode stderr to convert from bytes to string
-                error_message = result.stderr.decode('utf-8') if result.stderr else 'Unknown error'
-                raise ValueError(f'Error while calling: {command_string}\nError Message: {error_message}')
-        except Exception as e:
-            print(e)
+    def subprocess_call(command_list: list, capture_output=False):
+        stdout_setting = PIPE if capture_output else DEVNULL
+        result = run(
+            command_list,
+            stdout=stdout_setting,
+            stderr=PIPE
+        )
+        if result.returncode != 0:
+            error_message = result.stderr.decode('utf-8') if result.stderr else 'Unknown error'
+            raise ValueError(f'{error_message}')
+        else:
+            return result
 
     def protocol(
             self,
@@ -118,18 +112,25 @@ class GromacsProtocol:
         rmhet_command = [
             "node",
             os.path.join(self.mdp_directory, 'rmhet.js'),
-            os.path.join(self.pdb_directory, f'{identifier}_NoHOH.pdb')
+            f'{identifier}_NoHOH.pdb'
         ]
+        result = self.subprocess_call(
+            command_list=rmhet_command,
+            capture_output=True
+        )
         with open(f'{identifier}_nohet.pdb', 'w') as out:
-            run(rmhet_command, stdout=out)
+            out.write(result.stdout.decode())
         addmissingatom_command = [
             "node",
             os.path.join(self.mdp_directory, 'addmissingatoms.js'),
             f'{identifier}_nohet.pdb'
         ]
+        result = self.subprocess_call(
+            command_list=addmissingatom_command,
+            capture_output=True
+        )
         with open(f'{identifier}_clean.pdb', 'w') as out:
-            run(addmissingatom_command, stdout=out)
-
+            out.write(result.stdout.decode())
         # STEP 2: Here we select AMBER99SB-ILDN force-field
         # (#6 in the list)
         # for describing atom-atom interaction energies
@@ -139,7 +140,7 @@ class GromacsProtocol:
                 self.GMX,
                 'pdb2gmx',
                 '-f',
-                os.path.join(self.pdb_directory, f'{identifier}_clean.pdb'),
+                f'{identifier}_clean.pdb',
                 '-o',
                 f'{identifier}_processed.gro',
                 '-water',
