@@ -19,6 +19,8 @@ class GromacsProtocol:
             pdb_directory: str,
             output_directory: str,
             mdp_directory: str,
+            ntmpi: str,
+            ntomp: str,
             GMX='gmx',
             hard_force: bool = False,
     ):
@@ -26,20 +28,18 @@ class GromacsProtocol:
         self.output_directory = output_directory
         self.mdp_directory = mdp_directory
         self.GMX = GMX
+        self.ntmpi = ntmpi
+        self.ntomp = ntomp
         self.hard_force = hard_force
-        self.filenames_list = [
-            filename
-            for filename in os.listdir(self.pdb_directory)
-            if 'pdb' in filename
-        ]
         self.identifiers_list = [
-            filename.rsplit('.pdb')[0]
-            for filename in self.filenames_list
+            filename.rsplit('_NoHOH.pdb')[0]
+            if "NoHOH" in filename
+            else filename.rsplit('.pdb')[0]
+            for filename in os.listdir(self.pdb_directory)
         ]
         if self.hard_force:
             if os.path.exists(self.output_directory):
                 shutil.rmtree(self.output_directory)
-
         if not os.path.exists(self.output_directory):
             os.mkdir(self.output_directory)
         self.files_req = [
@@ -58,21 +58,31 @@ class GromacsProtocol:
             raise ValueError(
                 'all identifiers should be distinct'
             )
-            
-    @staticmethod
-    def suprocess_call(
-            command_list: list,
-    ) -> None:
-        run_command = call(
-            command_list,
-            stdout=DEVNULL,
-            stderr=STDOUT,
-        )
-        if run_command == 1:
-            command_string = ' '.join(command_list)
-            raise ValueError(
-                f'error while calling: {command_string} \n'
+        # remove incomplete runs
+        for identifier in os.listdir(self.output_directory):
+            dir_path = os.path.join(
+                self.output_directory,
+                identifier
             )
+            contains_edr = any(
+                file.endswith('.edr') for file in os.listdir(dir_path)
+            )
+            if not contains_edr:
+                shutil.rmtree(dir_path)
+
+    @staticmethod
+    def subprocess_call(command_list: list, capture_output=False):
+        stdout_setting = PIPE if capture_output else DEVNULL
+        result = run(
+            command_list,
+            stdout=stdout_setting,
+            stderr=PIPE
+        )
+        if result.returncode != 0:
+            error_message = result.stderr.decode('utf-8') if result.stderr else 'Unknown error'
+            raise ValueError(f'{error_message}')
+        else:
+            return result
 
     def protocol(
             self,
@@ -82,25 +92,45 @@ class GromacsProtocol:
         if not os.path.exists(simulation_directory):
             os.mkdir(simulation_directory)
         os.chdir(simulation_directory)
-        time.sleep(5)
+        # STEP 0:remove any water molecules to create a clean PDB:
+        pdb_file_direct = os.path.join(self.pdb_directory, f'{identifier}_NoHOH.pdb')
+        if not os.path.exists(pdb_file_direct):
+            pdb_file_direct = os.path.join(self.pdb_directory, f'{identifier}.pdb')
+            molecules = ["HOH", "PO4"]
+            pattern = '|'.join(molecules)
+            rmv_hoh_command = [
+                "grep",
+                "-v",
+                "-E",  # Use extended regular expressions
+                pattern,
+                pdb_file_direct
+            ]
+            with open(f"{identifier}_NoHOH.pdb", 'w') as out:
+                run(rmv_hoh_command, stdout=out)
         # STEP 1: The following step will remove all hetero atoms,
         # use one chain name, and add missing atoms
-        if not os.path.exists(f'{identifier}_nohet.pdb'):
-            rmhet_command = [
-                "node",
-                os.path.join(self.mdp_directory, 'rmhet.js'),
-                os.path.join(self.pdb_directory, f'{identifier}.pdb')
-            ]
-            with open(f'{identifier}_nohet.pdb', 'w') as out:
-                run(rmhet_command, stdout=out)
-        if not os.path.exists(f'{identifier}_clean.pdb'):
-            addmissingatom_command = [
-                "node",
-                os.path.join(self.mdp_directory, 'addmissingatoms.js'),
-                f'{identifier}_nohet.pdb'
-            ]
-            with open(f'{identifier}_clean.pdb', 'w') as out:
-                run(addmissingatom_command, stdout=out)
+        rmhet_command = [
+            "node",
+            os.path.join(self.mdp_directory, 'rmhet.js'),
+            f'{identifier}_NoHOH.pdb'
+        ]
+        result = self.subprocess_call(
+            command_list=rmhet_command,
+            capture_output=True
+        )
+        with open(f'{identifier}_nohet.pdb', 'w') as out:
+            out.write(result.stdout.decode())
+        addmissingatom_command = [
+            "node",
+            os.path.join(self.mdp_directory, 'addmissingatoms.js'),
+            f'{identifier}_nohet.pdb'
+        ]
+        result = self.subprocess_call(
+            command_list=addmissingatom_command,
+            capture_output=True
+        )
+        with open(f'{identifier}_clean.pdb', 'w') as out:
+            out.write(result.stdout.decode())
         # STEP 2: Here we select AMBER99SB-ILDN force-field
         # (#6 in the list)
         # for describing atom-atom interaction energies
@@ -118,12 +148,13 @@ class GromacsProtocol:
                 '-ff',
                 'amber99sb-ildn'
             ]
-            self.suprocess_call(pdb2gmx_command)
+            self.subprocess_call(pdb2gmx_command)
         # STEP 3: Here we create a simulation box 0.5nm
         # from the protein edge in all 6 directions.
         if not os.path.exists(f'{identifier}_newbox.gro'):
             editconf_command = [
-                self.GMX, 'editconf',
+                self.GMX,
+                'editconf',
                 '-f',
                 f'{identifier}_processed.gro',
                 '-o',
@@ -134,12 +165,13 @@ class GromacsProtocol:
                 '-bt',
                 'cubic'
             ]
-            self.suprocess_call(editconf_command)
+            self.subprocess_call(editconf_command)
         # STEP 4: Here we add water molecules in the
         # simulation box and new topology file is written.
         if not os.path.exists(f'{identifier}_solv.gro'):
             solvate_command = [
-                self.GMX, 'solvate',
+                self.GMX,
+                'solvate',
                 '-cp',
                 f'{identifier}_newbox.gro',
                 '-cs',
@@ -149,7 +181,7 @@ class GromacsProtocol:
                 '-p',
                 f'topol.top'
             ]
-            self.suprocess_call(solvate_command)
+            self.subprocess_call(solvate_command)
         # STEP 5: Generate parameter file ions.tpr for all atoms.
         if not os.path.exists(f'ions.tpr'):
             grompp_command = [
@@ -166,8 +198,8 @@ class GromacsProtocol:
                 '-maxwarn',
                 '2'
             ]
-            self.suprocess_call(grompp_command)
-        # STEP 6: This will add ions to your simulation box and replace 
+            self.subprocess_call(grompp_command)
+        # STEP 6: This will add ions to your simulation box and replace
         # the solvent molecules if there is a clash.
         if not os.path.exists(f'{identifier}_solv_ions.gro'):
             genion_command = [
@@ -189,8 +221,8 @@ class GromacsProtocol:
                 '-neutral',
                 '> /dev/null 2>&1'  # supress stdout
             ]
-            os.system(' '.join(genion_command)) 
-        # STEP 7: Energy minimization
+            os.system(' '.join(genion_command))
+            # STEP 7: Energy minimization
         if not os.path.exists('em.tpr'):
             em_command = [
                 self.GMX,
@@ -204,16 +236,19 @@ class GromacsProtocol:
                 '-o',
                 'em.tpr'
             ]
-            self.suprocess_call(em_command)
+            self.subprocess_call(em_command)
         # STEP 8: This runs the energy minimization.
         run_em_command = [
             self.GMX,
             'mdrun',
-            '-v',
+            '-ntomp',
+            self.ntomp,
             '-deffnm',
             'em'
         ]
-        self.suprocess_call(run_em_command)
+        if self.ntmpi:
+            run_em_command.extend(['-ntmpi', str(self.ntmpi)])
+        self.subprocess_call(run_em_command)
         # STEP 9: This creates input parameters
         # for NVT molecular dynamics.
         if not os.path.exists(f'nvt.tpr'):
@@ -231,20 +266,24 @@ class GromacsProtocol:
                 '-o',
                 'nvt.tpr'
             ]
-            self.suprocess_call(nvt_md_command)
+            self.subprocess_call(nvt_md_command)
         # STEP 10: This runs the NVT MD.
         tic = time.time()
         run_nvt_md_command = [
             self.GMX,
             'mdrun',
+            '-ntomp',
+            self.ntomp,
             '-deffnm',
             'nvt'
         ]
-        self.suprocess_call(run_nvt_md_command)
+        if self.ntmpi:
+            run_nvt_md_command.extend(['-ntmpi', str(self.ntmpi)])
+        self.subprocess_call(run_nvt_md_command)
         tac = time.time()
         sys.stdout.write(
             f'NVT MD {identifier} '
-            f'- took {round((tac-tic)/60,2)} minutes \n'
+            f'- took {round((tac - tic) / 60, 2)} minutes \n'
         )
         tic = time.time()
         # STEP 11: This creates input parameters for NPT molecular dynamics.
@@ -265,19 +304,23 @@ class GromacsProtocol:
                 '-o',
                 'npt.tpr'
             ]
-            self.suprocess_call(npt_md_command)
-        # STEP 12: This runs the NPT MD for 50k steps.
+            self.subprocess_call(npt_md_command)
+        # STEP 12: This runs the NPT MD for 100ps.
         run_npt_md_command = [
             self.GMX,
             'mdrun',
+            '-ntomp',
+            self.ntomp,
             '-deffnm',
             'npt'
         ]
-        self.suprocess_call(run_npt_md_command)
+        if self.ntmpi:
+            run_npt_md_command.extend(['-ntmpi', str(self.ntmpi)])
+        self.subprocess_call(run_npt_md_command)
         tac = time.time()
         sys.stdout.write(
             f'NPT MD {identifier} '
-            f'- took {round((tac-tic)/60,2)} minutes \n'
+            f'- took {round((tac - tic) / 60, 2)} minutes \n'
         )
         sys.stdout.write(' ')
 

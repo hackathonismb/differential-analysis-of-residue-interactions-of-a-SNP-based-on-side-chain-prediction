@@ -61,13 +61,14 @@ def main():
             alphafold_command = [
                 'bash',
                 os.path.join(alphafold_directory, 'run_alphafold.sh'),
-                f'-d {alphafold_dataset}',
-                f'--fasta_paths={input_path}',
-                f'--output_dir={out_path}',
-                '--model_preset=monomer',
-                '--db_preset=full_dbs'
+                f'-d {alphafold_dataset}', # Path to directory with supporting data
+                f'-o {out_path}',  # output directory
+                f'-f {input_path}',  # Path to a FASTA file containing one sequence
+                f'-t 2021-11-01',  # Maximum template release date to consider
+                '--m monomer',  # Preset model configuration
+                '--db_preset=full_dbs'  # Preset MSA database configuration
             ]
-            os.system(' '.join(alphafold_command), shell=True)
+            os.system(' '.join(alphafold_command))
 
 
 if __name__ == "__main__":

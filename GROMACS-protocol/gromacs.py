@@ -32,6 +32,25 @@ def argument_parser():
         help='executable',
         default='gmx',
     )
+    parser.add_argument(
+        '--ntmpi',
+        type=str,
+        help='The number of MPI threads to use.'
+             ' This sets how many separate processes will be '
+             'spawned for parallel computation. Typically, '
+             'this should not exceed the number of physical '
+             'or logical CPU cores available.',
+        default=""
+    )
+    parser.add_argument(
+        '--ntomp',
+        type=str,
+        help='The number of OpenMP threads per MPI process.'
+             ' This controls the parallelism within each MPI process.'
+             ' It is often set to the number of CPU cores per MPI '
+             'task or to suit the specific computational workload.',
+        default='0'
+    )
     args = parser.parse_args()
     return args
 
@@ -44,6 +63,8 @@ def main():
         mdp_directory=args.mdp_directory,
         GMX=args.GMX,
         hard_force=args.hard_force,
+        ntomp=args.ntomp,
+        ntmpi=args.ntmpi
     )
     gromacs_prot.main(
         args_list=gromacs_prot.identifiers_list
